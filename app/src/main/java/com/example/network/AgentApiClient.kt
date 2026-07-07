@@ -35,6 +35,27 @@ data class WebSearchResponse(
     val query: String
 )
 
+@JsonClass(generateAdapter = true)
+data class StreamChunk(
+    @Json(name = "isDone")
+    val isDone: Boolean = false,
+
+    @Json(name = "textDelta")
+    val textDelta: String = "",
+
+    @Json(name = "reasoningDelta")
+    val reasoningDelta: String = "",
+
+    @Json(name = "toolCallDeltaName")
+    val toolCallDeltaName: String? = null,
+
+    @Json(name = "toolCallDeltaInput")
+    val toolCallDeltaInput: String? = null,
+
+    @Json(name = "toolCallId")
+    val toolCallId: String? = null
+)
+
 class AgentApiClient {
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -333,7 +354,7 @@ class AgentApiClient {
             if (c == '\\' && i + 1 < len) {
                 when (val next = escaped[i + 1]) {
                     'n' -> sb.append('\n'); 'r' -> sb.append('\r'); 't' -> sb.append('\t')
-                    'b' -> sb.append('\b'); 'f' -> sb.append('')
+                    'b' -> sb.append('\b'); 'f' -> sb.append('')
                     '"' -> sb.append('"'); '\\' -> sb.append('\\'); '/' -> sb.append('/')
                     'u' -> { if (i + 5 < len) { try { sb.append(escaped.substring(i + 2, i + 6).toInt(16).toChar()); i += 4 } catch (e: Exception) { sb.append("\\u") } } else sb.append("\\u") }
                     else -> sb.append(next)
@@ -361,34 +382,34 @@ class AgentApiClient {
     private fun getOpenAiToolDeclaration(toolId: String): String? {
         return when (toolId) {
             "tool_calculator" -> """
-                {"type":"function","function":{"name":"tool_calculator","description":"Evaluate mathematical expressions","parameters":{"type":"object","properties":{"expression":{"type":"string","description":"Math expression like '2 + 2'"}},"required":["expression"]}}}
+                {"type":"function","function":{"name":"tool_calculator","description":"Evaluate mathematical expressions","parameters":{"type":"object","properties":{"expression":{"type":"string","description":"Math expression"}},"required":["expression"]}}}
             """.trimIndent()
             "tool_weather" -> """
                 {"type":"function","function":{"name":"tool_weather","description":"Get real-time weather data for a city","parameters":{"type":"object","properties":{"city":{"type":"string","description":"City name"}},"required":["city"]}}}
             """.trimIndent()
             "tool_code_executor" -> """
-                {"type":"function","function":{"name":"tool_code_executor","description":"Execute code snippets and return output","parameters":{"type":"object","properties":{"code":{"type":"string","description":"Code to execute"},"language":{"type":"string","enum":["python","javascript"],"description":"Language"}},"required":["code","language"]}}}
+                {"type":"function","function":{"name":"tool_code_executor","description":"Execute code snippets and return output","parameters":{"type":"object","properties":{"code":{"type":"string","description":"Code to execute"},"language":{"type":"string","description":"Programming language"}},"required":["code"]}}}
             """.trimIndent()
             "tool_translator" -> """
-                {"type":"function","function":{"name":"tool_translator","description":"Translate text between languages","parameters":{"type":"object","properties":{"text":{"type":"string","description":"Source text"},"target_lang":{"type":"string","description":"Target language"}},"required":["text","target_lang"]}}}
+                {"type":"function","function":{"name":"tool_translator","description":"Translate text between languages","parameters":{"type":"object","properties":{"text":{"type":"string","description":"Text to translate"},"target_language":{"type":"string","description":"Target language"}},"required":["text","target_language"]}}}
             """.trimIndent()
             "tool_summarizer" -> """
-                {"type":"function","function":{"name":"tool_summarizer","description":"Summarize long text into key points","parameters":{"type":"object","properties":{"text":{"type":"string","description":"Text to summarize"},"length":{"type":"string","enum":["short","medium","detailed"]}},"required":["text"]}}}
+                {"type":"function","function":{"name":"tool_summarizer","description":"Summarize long text into key points","parameters":{"type":"object","properties":{"text":{"type":"string","description":"Text to summarize"}},"required":["text"]}}}
             """.trimIndent()
             "tool_email_drafter" -> """
-                {"type":"function","function":{"name":"tool_email_drafter","description":"Draft professional emails","parameters":{"type":"object","properties":{"subject":{"type":"string"},"recipient":{"type":"string"},"tone":{"type":"string","enum":["formal","casual","urgent"]},"content":{"type":"string"}},"required":["subject","content"]}}}
+                {"type":"function","function":{"name":"tool_email_drafter","description":"Draft professional emails","parameters":{"type":"object","properties":{"subject":{"type":"string"},"recipient":{"type":"string"},"content":{"type":"string"}},"required":["subject","recipient"]}}}
             """.trimIndent()
             "tool_sql_query" -> """
-                {"type":"function","function":{"name":"tool_sql_query","description":"Execute SQL query","parameters":{"type":"object","properties":{"query":{"type":"string","description":"SQL query"},"database":{"type":"string"}},"required":["query"]}}}
+                {"type":"function","function":{"name":"tool_sql_query","description":"Execute SQL query","parameters":{"type":"object","properties":{"query":{"type":"string","description":"SQL query"}},"required":["query"]}}}
             """.trimIndent()
             "tool_api_tester" -> """
-                {"type":"function","function":{"name":"tool_api_tester","description":"Test HTTP API endpoints","parameters":{"type":"object","properties":{"url":{"type":"string"},"method":{"type":"string","enum":["GET","POST","PUT","DELETE"]},"headers":{"type":"object"},"body":{"type":"object"}},"required":["url","method"]}}}
+                {"type":"function","function":{"name":"tool_api_tester","description":"Test HTTP API endpoints","parameters":{"type":"object","properties":{"url":{"type":"string"},"method":{"type":"string"},"headers":{"type":"object"}},"required":["url","method"]}}}
             """.trimIndent()
             "tool_sentiment_analyzer" -> """
                 {"type":"function","function":{"name":"tool_sentiment_analyzer","description":"Analyze text sentiment","parameters":{"type":"object","properties":{"text":{"type":"string"}},"required":["text"]}}}
             """.trimIndent()
             "tool_password_generator" -> """
-                {"type":"function","function":{"name":"tool_password_generator","description":"Generate secure passwords","parameters":{"type":"object","properties":{"length":{"type":"integer"},"include_symbols":{"type":"boolean"},"include_numbers":{"type":"boolean"}},"required":["length"]}}}
+                {"type":"function","function":{"name":"tool_password_generator","description":"Generate secure passwords","parameters":{"type":"object","properties":{"length":{"type":"integer"},"include_special":{"type":"boolean"}},"required":["length"]}}}
             """.trimIndent()
             "tool_url_shortener" -> """
                 {"type":"function","function":{"name":"tool_url_shortener","description":"Shorten long URLs","parameters":{"type":"object","properties":{"url":{"type":"string"}},"required":["url"]}}}
@@ -397,34 +418,34 @@ class AgentApiClient {
                 {"type":"function","function":{"name":"tool_qr_generator","description":"Generate QR code","parameters":{"type":"object","properties":{"data":{"type":"string"}},"required":["data"]}}}
             """.trimIndent()
             "tool_unit_converter" -> """
-                {"type":"function","function":{"name":"tool_unit_converter","description":"Convert between units","parameters":{"type":"object","properties":{"value":{"type":"number"},"from_unit":{"type":"string"},"to_unit":{"type":"string"},"category":{"type":"string"}},"required":["value","from_unit","to_unit"]}}}
+                {"type":"function","function":{"name":"tool_unit_converter","description":"Convert between units","parameters":{"type":"object","properties":{"value":{"type":"number"},"from_unit":{"type":"string"},"to_unit":{"type":"string"}},"required":["value","from_unit","to_unit"]}}}
             """.trimIndent()
             "tool_json_formatter" -> """
-                {"type":"function","function":{"name":"tool_json_formatter","description":"Format, validate, prettify JSON","parameters":{"type":"object","properties":{"json":{"type":"string"},"action":{"type":"string","enum":["format","validate","minify"]}},"required":["json"]}}}
+                {"type":"function","function":{"name":"tool_json_formatter","description":"Format, validate, prettify JSON","parameters":{"type":"object","properties":{"json":{"type":"string"},"action":{"type":"string"}},"required":["json"]}}}
             """.trimIndent()
             "tool_xml_converter" -> """
-                {"type":"function","function":{"name":"tool_xml_converter","description":"Convert XML to JSON or JSON to XML","parameters":{"type":"object","properties":{"data":{"type":"string"},"from":{"type":"string"},"to":{"type":"string"}},"required":["data","from","to"]}}}
+                {"type":"function","function":{"name":"tool_xml_converter","description":"Convert XML to JSON or JSON to XML","parameters":{"type":"object","properties":{"data":{"type":"string"},"from":{"type":"string"},"to":{"type":"string"}},"required":["data"]}}}
             """.trimIndent()
             "tool_csv_analyzer" -> """
-                {"type":"function","function":{"name":"tool_csv_analyzer","description":"Analyze CSV data","parameters":{"type":"object","properties":{"csv":{"type":"string"},"action":{"type":"string","enum":["summary","column_stats","to_json"]}},"required":["csv"]}}}
+                {"type":"function","function":{"name":"tool_csv_analyzer","description":"Analyze CSV data","parameters":{"type":"object","properties":{"csv":{"type":"string"},"action":{"type":"string"}},"required":["csv"]}}}
             """.trimIndent()
             "tool_markdown_parser" -> """
-                {"type":"function","function":{"name":"tool_markdown_parser","description":"Parse Markdown to HTML","parameters":{"type":"object","properties":{"markdown":{"type":"string"},"output":{"type":"string","enum":["html","structure"]}},"required":["markdown"]}}}
+                {"type":"function","function":{"name":"tool_markdown_parser","description":"Parse Markdown to HTML","parameters":{"type":"object","properties":{"markdown":{"type":"string"},"output":{"type":"string"}},"required":["markdown"]}}}
             """.trimIndent()
             "tool_regex_tester" -> """
-                {"type":"function","function":{"name":"tool_regex_tester","description":"Test regex patterns","parameters":{"type":"object","properties":{"pattern":{"type":"string"},"text":{"type":"string"},"flags":{"type":"string"}},"required":["pattern","text"]}}}
+                {"type":"function","function":{"name":"tool_regex_tester","description":"Test regex patterns","parameters":{"type":"object","properties":{"pattern":{"type":"string"},"text":{"type":"string"}},"required":["pattern","text"]}}}
             """.trimIndent()
             "tool_uuid_generator" -> """
-                {"type":"function","function":{"name":"tool_uuid_generator","description":"Generate UUIDs","parameters":{"type":"object","properties":{"version":{"type":"string","enum":["v1","v4","v7"]},"count":{"type":"integer"}},"required":[]}}}
+                {"type":"function","function":{"name":"tool_uuid_generator","description":"Generate UUIDs","parameters":{"type":"object","properties":{"version":{"type":"string","enum":["v1","v4","v7"]}},"required":[]}}}
             """.trimIndent()
             "tool_hash_generator" -> """
-                {"type":"function","function":{"name":"tool_hash_generator","description":"Generate hash (MD5, SHA1, SHA256, SHA512)","parameters":{"type":"object","properties":{"text":{"type":"string"},"algorithm":{"type":"string","enum":["MD5","SHA1","SHA256","SHA512"]}},"required":["text","algorithm"]}}}
+                {"type":"function","function":{"name":"tool_hash_generator","description":"Generate hash (MD5, SHA1, SHA256, SHA512)","parameters":{"type":"object","properties":{"text":{"type":"string"},"algorithm":{"type":"string"}},"required":["text"]}}}
             """.trimIndent()
             "tool_base64_tool" -> """
-                {"type":"function","function":{"name":"tool_base64_tool","description":"Encode/decode Base64","parameters":{"type":"object","properties":{"data":{"type":"string"},"action":{"type":"string","enum":["encode","decode"]}},"required":["data","action"]}}}
+                {"type":"function","function":{"name":"tool_base64_tool","description":"Encode/decode Base64","parameters":{"type":"object","properties":{"data":{"type":"string"},"action":{"type":"string"}},"required":["data","action"]}}}
             """.trimIndent()
             "tool_timestamp_converter" -> """
-                {"type":"function","function":{"name":"tool_timestamp_converter","description":"Convert timestamps","parameters":{"type":"object","properties":{"value":{"type":"string"},"from":{"type":"string"},"to":{"type":"string"}},"required":["value","from","to"]}}}
+                {"type":"function","function":{"name":"tool_timestamp_converter","description":"Convert timestamps","parameters":{"type":"object","properties":{"value":{"type":"string"},"from":{"type":"string"},"to":{"type":"string"}},"required":["value"]}}}
             """.trimIndent()
             "tool_ip_lookup" -> """
                 {"type":"function","function":{"name":"tool_ip_lookup","description":"IP geolocation lookup","parameters":{"type":"object","properties":{"ip":{"type":"string"}},"required":["ip"]}}}
@@ -433,13 +454,13 @@ class AgentApiClient {
                 {"type":"function","function":{"name":"tool_user_agent_parser","description":"Parse User-Agent string","parameters":{"type":"object","properties":{"user_agent":{"type":"string"}},"required":["user_agent"]}}}
             """.trimIndent()
             "tool_cidr_calculator" -> """
-                {"type":"function","function":{"name":"tool_cidr_calculator","description":"Calculate CIDR ranges","parameters":{"type":"object","properties":{"cidr":{"type":"string"},"action":{"type":"string","enum":["range","hosts","mask"]}},"required":["cidr"]}}}
+                {"type":"function","function":{"name":"tool_cidr_calculator","description":"Calculate CIDR ranges","parameters":{"type":"object","properties":{"cidr":{"type":"string"},"action":{"type":"string"}},"required":["cidr"]}}}
             """.trimIndent()
             "tool_http_header_analyzer" -> """
                 {"type":"function","function":{"name":"tool_http_header_analyzer","description":"Analyze HTTP headers","parameters":{"type":"object","properties":{"headers":{"type":"object"},"url":{"type":"string"}},"required":["headers"]}}}
             """.trimIndent()
             "tool_dns_lookup" -> """
-                {"type":"function","function":{"name":"tool_dns_lookup","description":"DNS lookup","parameters":{"type":"object","properties":{"domain":{"type":"string"},"record_type":{"type":"string","enum":["A","AAAA","CNAME","MX","TXT","NS"]}},"required":["domain"]}}}
+                {"type":"function","function":{"name":"tool_dns_lookup","description":"DNS lookup","parameters":{"type":"object","properties":{"domain":{"type":"string"},"record_type":{"type":"string"}},"required":["domain"]}}}
             """.trimIndent()
             "tool_cron_generator" -> """
                 {"type":"function","function":{"name":"tool_cron_generator","description":"Generate cron expressions","parameters":{"type":"object","properties":{"description":{"type":"string"}},"required":["description"]}}}
@@ -454,10 +475,10 @@ class AgentApiClient {
                 {"type":"function","function":{"name":"tool_html_to_markdown","description":"HTML to Markdown conversion","parameters":{"type":"object","properties":{"html":{"type":"string"}},"required":["html"]}}}
             """.trimIndent()
             "tool_color_picker" -> """
-                {"type":"function","function":{"name":"tool_color_picker","description":"Convert colors between formats","parameters":{"type":"object","properties":{"color":{"type":"string"},"from":{"type":"string"},"to":{"type":"string"}},"required":["color","from","to"]}}}
+                {"type":"function","function":{"name":"tool_color_picker","description":"Convert colors between formats","parameters":{"type":"object","properties":{"color":{"type":"string"},"from":{"type":"string"},"to":{"type":"string"}},"required":["color"]}}}
             """.trimIndent()
             "tool_web_search" -> """
-                {"type":"function","function":{"name":"tool_web_search","description":"Search the web for real-time information","parameters":{"type":"object","properties":{"query":{"type":"string","description":"Search query"},"provider":{"type":"string","enum":["searxng","exa","firecrawl"],"description":"Search provider"}},"required":["query"]}}}
+                {"type":"function","function":{"name":"tool_web_search","description":"Search the web for real-time information","parameters":{"type":"object","properties":{"query":{"type":"string","description":"Search query"}},"required":["query"]}}}
             """.trimIndent()
             else -> null
         }
@@ -472,7 +493,7 @@ class AgentApiClient {
                 {"name":"tool_weather","description":"Get weather data","parameters":{"type":"OBJECT","properties":{"city":{"type":"STRING","description":"City name"}},"required":["city"]}}
             """.trimIndent()
             "tool_code_executor" -> """
-                {"name":"tool_code_executor","description":"Execute code snippets","parameters":{"type":"OBJECT","properties":{"code":{"type":"STRING"},"language":{"type":"STRING"}},"required":["code","language"]}}
+                {"name":"tool_code_executor","description":"Execute code snippets","parameters":{"type":"OBJECT","properties":{"code":{"type":"STRING"},"language":{"type":"STRING"}},"required":["code"]}}
             """.trimIndent()
             "tool_translator" -> """
                 {"name":"tool_translator","description":"Translate text","parameters":{"type":"OBJECT","properties":{"text":{"type":"STRING"},"target_lang":{"type":"STRING"}},"required":["text","target_lang"]}}
@@ -559,7 +580,7 @@ class AgentApiClient {
                 {"name":"tool_html_to_markdown","description":"HTML to Markdown","parameters":{"type":"OBJECT","properties":{"html":{"type":"STRING"}},"required":["html"]}}
             """.trimIndent()
             "tool_color_picker" -> """
-                {"name":"tool_color_picker","description":"Convert colors","parameters":{"type":"OBJECT","properties":{"color":{"type":"STRING"},"from":{"type":"STRING"},"to":{"type":"STRING"}},"required":["color","from","to"]}}
+                {"name":"tool_color_picker","description":"Convert colors","parameters":{"type":"OBJECT","properties":{"color":{"type":"STRING"},"from":{"type":"STRING"},"to":{"type":"STRING"}},"required":["color"]}}
             """.trimIndent()
             "tool_web_search" -> """
                 {"name":"tool_web_search","description":"Search the web for real-time information","parameters":{"type":"OBJECT","properties":{"query":{"type":"STRING"},"provider":{"type":"STRING"}},"required":["query"]}}
