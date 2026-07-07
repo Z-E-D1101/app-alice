@@ -1,0 +1,6 @@
+{
+  "name": "AI Agent Client",
+  "description": "Universal AI Agent Client similar to Claude Mobile, with support for customizable providers, SSE streaming, and visual tool calls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
