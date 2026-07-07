@@ -218,9 +218,17 @@ fun MainScreen(
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "New Chat")
+                        Icon(
+                            Icons.Default.Add, 
+                            contentDescription = "New Chat", 
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("New Chat", fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "New Chat", 
+                            fontWeight = FontWeight.Bold, 
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
 
                     // Search Chat Session
