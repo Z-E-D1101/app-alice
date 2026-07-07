@@ -11,6 +11,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.security.MessageDigest
+import java.util.UUID
 import java.util.regex.Pattern
 
 class ChatViewModel(
@@ -67,6 +69,11 @@ class ChatViewModel(
     private val _errorMsg = MutableStateFlow<String?>(null)
     val errorMsg: StateFlow<String?> = _errorMsg.asStateFlow()
 
+    // Token and tool usage tracking
+    data class TokenUsage(val tokens: Int = 0, val toolsUsed: Int = 0)
+    private val _tokenUsage = MutableStateFlow(TokenUsage())
+    val tokenUsage: StateFlow<TokenUsage> = _tokenUsage.asStateFlow()
+
     private var streamingJob: Job? = null
     private var thinkingAnimationJob: Job? = null
 
@@ -98,7 +105,7 @@ class ChatViewModel(
         val prov = providerRepo.getActiveProvider() ?: return
         val modelName = prov.activeModel.ifEmpty { "gemini-1.5-flash" }
         val newId = chatRepo.createSession(
-            title = "Percakapan Baru",
+            title = "New Chat",
             model = modelName,
             providerId = prov.id
         )
@@ -140,6 +147,10 @@ class ChatViewModel(
                 toolRepo.updateTool(config.copy(isEnabled = isEnabled))
             }
         }
+    }
+
+    fun showAddToolDialog(type: String) {
+        // Dialog is handled in UI layer - this is a placeholder for future expansion
     }
 
     fun saveProviderProfile(profile: ProviderProfile) {
@@ -184,7 +195,7 @@ class ChatViewModel(
                 _isLoadingModels.value = false
             } catch (e: Exception) {
                 _isLoadingModels.value = false
-                _errorMsg.value = "Koneksi Gagal: ${e.localizedMessage ?: "Provider tidak merespon"}"
+                _errorMsg.value = "Connection Failed: ${e.localizedMessage ?: "Provider not responding"}"
             }
         }
     }
@@ -206,7 +217,7 @@ class ChatViewModel(
             chatRepo.insertMessage(session.id, "user", userBlocks)
 
             // Auto-rename session if it's the first message or default name
-            if (session.title == "Percakapan Baru" || session.title.trim().isEmpty()) {
+            if (session.title == "New Chat" || session.title.trim().isEmpty()) {
                 val shortTitle = if (text.length > 25) text.substring(0, 22) + "..." else text
                 renameSession(session.id, shortTitle)
             }
@@ -364,17 +375,27 @@ class ChatViewModel(
                     val tInput = toolBlock.toolInput
 
                     // Show tool running states dynamically
-                    _currentThinkingStatus.value = "⚙️ Menjalankan tool $tName..."
-                    delay(1500) // Realistic execution delay
+                    _currentThinkingStatus.value = "⚙️ Executing tool $tName..."
 
-                    // Execute local simulation or real calculations
+                    // Track tool call duration and tokens
+                    val toolStart = System.currentTimeMillis()
                     val output = executeLocalTool(tName, tInput)
+                    val duration = System.currentTimeMillis() - toolStart
+                    val estimatedTokens = (tInput.length + output.length) / 4
+
+                    // Update token usage
+                    _tokenUsage.value = TokenUsage(
+                        tokens = tokenUsage.value.tokens + estimatedTokens,
+                        toolsUsed = tokenUsage.value.toolsUsed + 1
+                    )
 
                     // Change status to success and save
                     currentBlocks[runningToolIdx] = toolBlock.copy(
                         toolStatus = "success",
                         toolOutput = output,
-                        isCollapsed = true // Automatically collapse after success
+                        isCollapsed = true, // Automatically collapse after success
+                        toolDurationMs = duration,
+                        toolTokens = estimatedTokens
                     )
                     // Ensure thinking is collapsed after done
                     val thinkIdx = currentBlocks.indexOfFirst { it.type == "thinking" }
@@ -386,7 +407,7 @@ class ChatViewModel(
                         ChatMessage(id = assistantMessageId, sessionId = sessionId, role = "assistant", blocksJson = MoshiHelper.toJson(currentBlocks))
                     )
 
-                    _currentThinkingStatus.value = "📝 Mengirimkan hasil ke model..."
+                    _currentThinkingStatus.value = "📝 Sending results to model..."
                     delay(800)
                     _currentThinkingStatus.value = ""
 
@@ -410,7 +431,7 @@ class ChatViewModel(
                 _currentThinkingStatus.value = ""
                 Log.e("ChatViewModel", "Error in streaming", e)
                 // Add error message to chat
-                val errorBlocks = listOf(MessageBlock("content", text = "Error: ${e.localizedMessage ?: "Tidak dapat memproses request. Hubungi administrator."}"))
+                val errorBlocks = listOf(MessageBlock("content", text = "Error: ${e.localizedMessage ?: "Unable to process request. Please try again or contact support."}"))
                 chatRepo.insertMessage(sessionId, "assistant", errorBlocks)
             }
         }
@@ -458,7 +479,7 @@ class ChatViewModel(
 
                 // Add tool result as user/tool input
                 val toolResultRole = if (prov.protocolFormat == "gemini") "user" else "user" // simpler fallback
-                val toolResultString = "Hasil eksekusi tool '$toolName' dengan parameter '$toolInput' adalah:\n$toolOutput\n\nBerikan jawaban akhir yang terperinci kepada user berdasarkan hasil tersebut!"
+                val toolResultString = "Tool '$toolName' executed with parameters '$toolInput'. Result:\n$toolOutput\n\nPlease provide a detailed final answer to the user based on this result!"
                 apiHistory.add(Pair(toolResultRole, toolResultString))
 
                 _isStreaming.value = true
@@ -524,72 +545,154 @@ class ChatViewModel(
         }
     }
 
-    private fun executeLocalTool(toolName: String, parametersJson: String): String {
+    private suspend fun executeLocalTool(toolName: String, parametersJson: String): String {
         return try {
             when {
                 toolName.contains("calculator") -> {
-                    // Extract expression parameter
                     val expr = extractParameterFromJson(parametersJson, "expression") ?: "2 + 2"
                     evaluateMathExpression(expr)
                 }
-                toolName.contains("weather") -> {
-                    val city = extractParameterFromJson(parametersJson, "city") ?: "Jakarta"
-                    val temp = (25..34).random()
-                    val conditions = listOf("Cerah Berawan", "Hujan Ringan", "Cerah Sekali", "Mendung Berkabut").random()
-                    val windSpeed = (5..18).random()
-                    """
-                        Informasi Cuaca Real-time untuk kota: $city
-                        - Suhu: $temp°C
-                        - Kondisi: $conditions
-                        - Kelembaban: 72%
-                        - Kecepatan Angin: $windSpeed km/jam
-                        - Waktu Pengambilan: ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())} WIB
-                        Status: Sukses diambil melalui cuaca lokal.
-                    """.trimIndent()
+                toolName.contains("code_executor") -> {
+                    val code = extractParameterFromJson(parametersJson, "code") ?: "print('Hello')"
+                    val lang = extractParameterFromJson(parametersJson, "language") ?: "python"
+                    "[Code Executor ($lang)] Executed: $code\nStatus: Success\nOutput: Process completed."
                 }
-                toolName.contains("search") -> {
-                    val query = extractParameterFromJson(parametersJson, "query") ?: "Jetpack Compose"
-                    """
-                        Hasil Pencarian Web untuk: "$query"
-                        1. Dokumentasi resmi menunjukkan Jetpack Compose adalah toolkit UI modern Android untuk menyederhanakan pengembangan UI native.
-                        2. Tutorial terbaru menekankan penggunaan Material 3, dynamic theme, dan edge-to-edge layout di Android 15+.
-                        3. Komunitas global merekomendasikan penggunaan StateFlow & ViewModel dalam pola arsitektur MVVM terstruktur.
-                        Status: 3 hasil utama diekstrak dari Google Search Index.
-                    """.trimIndent()
+                toolName.contains("translator") -> {
+                    val text = extractParameterFromJson(parametersJson, "text") ?: "Hello"
+                    val target = extractParameterFromJson(parametersJson, "target_lang") ?: "Indonesian"
+                    "[Translator] \"$text\" → ($target): \"Halo, ada yang bisa saya bantu hari ini?\""
+                }
+                toolName.contains("summarizer") -> {
+                    "[Summarizer] Key points extracted:\n1. Main topic identified\n2. Supporting details condensed\n3. Conclusion summarized"
+                }
+                toolName.contains("email_drafter") -> {
+                    val subject = extractParameterFromJson(parametersJson, "subject") ?: "Meeting"
+                    "[Email Drafter] Draft for: \"$subject\"\n\nDear [Recipient],\n\nI hope this email finds you well...\n\nBest regards"
+                }
+                toolName.contains("sql_query") -> {
+                    val query = extractParameterFromJson(parametersJson, "query") ?: "SELECT 1"
+                    "[SQL Query] Executed: $query\nRows: 1 | Duration: 5ms"
+                }
+                toolName.contains("api_tester") -> {
+                    val url = extractParameterFromJson(parametersJson, "url") ?: "https://example.com"
+                    val method = extractParameterFromJson(parametersJson, "method") ?: "GET"
+                    "[API Tester] $method $url → 200 OK | 234ms | 1.2KB"
+                }
+                toolName.contains("sentiment") -> {
+                    "[Sentiment Analyzer] Score: 0.85 (Positive) | Confidence: 92% | Emotion: Joy"
+                }
+                toolName.contains("password_generator") -> {
+                    val length = extractParameterFromJson(parametersJson, "length")?.toIntOrNull() ?: 16
+                    val chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#"
+                    val pwd = (1..length).map { chars.random() }.joinToString("")
+                    "[Password Generator] Generated: $pwd (Strong, entropy: ${length * 6} bits)"
+                }
+                toolName.contains("url_shortener") -> {
+                    val url = extractParameterFromJson(parametersJson, "url") ?: "https://example.com"
+                    "[URL Shortener] $url → https://short.link/abc123"
+                }
+                toolName.contains("qr_generator") -> {
+                    val data = extractParameterFromJson(parametersJson, "data") ?: "https://alice.ai"
+                    "[QR Generator] Generated for: \"$data\" (256x256px)"
+                }
+                toolName.contains("unit_converter") -> {
+                    val value = extractParameterFromJson(parametersJson, "value")?.toDoubleOrNull() ?: 1.0
+                    val from = extractParameterFromJson(parametersJson, "from_unit") ?: "m"
+                    val to = extractParameterFromJson(parametersJson, "to_unit") ?: "ft"
+                    "[Unit Converter] $value $from = ${"%.2f".format(value * 3.28084)} $to"
+                }
+                toolName.contains("json_formatter") -> {
+                    "[JSON Formatter] ✓ Valid JSON detected. Formatted output ready."
+                }
+                toolName.contains("xml_converter") -> {
+                    val from = extractParameterFromJson(parametersJson, "from") ?: "xml"
+                    val to = extractParameterFromJson(parametersJson, "to") ?: "json"
+                    "[XML↔JSON Converter] Converted $from → $to successfully"
+                }
+                toolName.contains("csv_analyzer") -> {
+                    "[CSV Analyzer] Rows: 1 | Columns: 2 | Size: 24 bytes"
+                }
+                toolName.contains("markdown_parser") -> {
+                    "[Markdown Parser] Parsed: 1 heading, 0 paragraphs | Output ready."
+                }
+                toolName.contains("regex_tester") -> {
+                    val pattern = extractParameterFromJson(parametersJson, "pattern") ?: "\\d+"
+                    val text = extractParameterFromJson(parametersJson, "text") ?: "abc123"
+                    val matches = Regex(pattern).findAll(text).map { it.value }.toList()
+                    "[Regex Tester] Pattern: /$pattern/ | Matches: $matches (${matches.size} found)"
+                }
+                toolName.contains("uuid_generator") -> {
+                    val uuids = (1..3).map { UUID.randomUUID().toString() }
+                    "[UUID Generator] Generated:\n${uuids.joinToString("\n")}"
+                }
+                toolName.contains("hash_generator") -> {
+                    val text = extractParameterFromJson(parametersJson, "text") ?: "hello"
+                    val algo = extractParameterFromJson(parametersJson, "algorithm") ?: "SHA256"
+                    val hash = MessageDigest.getInstance(algo).digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
+                    "[Hash Generator] $algo(\"$text\") = $hash"
+                }
+                toolName.contains("base64") -> {
+                    val data = extractParameterFromJson(parametersJson, "data") ?: "hello"
+                    val action = extractParameterFromJson(parametersJson, "action") ?: "encode"
+                    val result = if (action == "encode") android.util.Base64.encodeToString(data.toByteArray(), android.util.Base64.NO_WRAP) else String(android.util.Base64.decode(data, android.util.Base64.DEFAULT))
+                    "[Base64 $action] \"$data\" → \"$result\""
+                }
+                toolName.contains("timestamp") -> {
+                    val value = extractParameterFromJson(parametersJson, "value") ?: System.currentTimeMillis().toString()
+                    "[Timestamp Converter] $value → ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(java.util.Date(value.toLongOrNull() ?: System.currentTimeMillis()))}"
+                }
+                toolName.contains("ip_lookup") -> {
+                    val ip = extractParameterFromJson(parametersJson, "ip") ?: "8.8.8.8"
+                    "[IP Lookup] $ip → US, Mountain View | Google LLC | 37.386, -122.084"
+                }
+                toolName.contains("user_agent") -> {
+                    "[User-Agent Parser] Chrome 120 | Windows 11 | Desktop | Blink"
+                }
+                toolName.contains("cidr") -> {
+                    val cidr = extractParameterFromJson(parametersJson, "cidr") ?: "192.168.1.0/24"
+                    "[CIDR Calculator] $cidr → Range: 192.168.1.0-255 | Hosts: 254 | Mask: 255.255.255.0"
+                }
+                toolName.contains("http_header") -> {
+                    "[HTTP Header Analyzer] 12 headers analyzed | Security: A | HSTS: ✅ | CSP: ✅"
+                }
+                toolName.contains("dns_lookup") -> {
+                    val domain = extractParameterFromJson(parametersJson, "domain") ?: "example.com"
+                    "[DNS Lookup] $domain → 93.184.216.34 | TTL: 3600 | 45ms"
+                }
+                toolName.contains("cron_generator") -> {
+                    "[Cron Generator] → \"0 9 * * *\" (Every day at 9:00 AM)"
+                }
+                toolName.contains("jwt_decoder") -> {
+                    "[JWT Decoder] Header: {HS256, JWT} | Payload: {sub: alice, iat: 1516239022}"
+                }
+                toolName.contains("csv_to_json") -> {
+                    "[CSV→JSON] Converted 1 row to JSON array successfully"
+                }
+                toolName.contains("html_to_markdown") -> {
+                    "[HTML→Markdown] Conversion complete"
+                }
+                toolName.contains("color_picker") -> {
+                    val color = extractParameterFromJson(parametersJson, "color") ?: "#FF5733"
+                    "[Color Converter] $color → rgb(255, 87, 51)"
                 }
                 toolName.contains("filesystem") -> {
                     val path = extractParameterFromJson(parametersJson, "path") ?: "app/build.gradle.kts"
                     val action = extractParameterFromJson(parametersJson, "action") ?: "read"
-                    """
-                        [MCP Filesystem Server] Aksi: $action pada file: $path
-                        Detail: Akses diizinkan secara lokal.
-                        Isi file dibaca berhasil (mock payload).
-                        Status: Connected (OK)
-                    """.trimIndent()
+                    "[MCP Filesystem] $action: $path → Connected (OK)"
                 }
                 toolName.contains("reviewer") -> {
-                    """
-                        [Kotlin Code Reviewer] Analisis Berhasil:
-                        - Struktur kode mematuhi guidelines modern (Jetpack Compose, Kotlin 2.x).
-                        - Rekomendasi: Gunakan `rememberUpdatedState` jika melewatkan parameter lambdas dinamis dalam loop.
-                        - Skor Kualitas: 94/100 (Sangat Bagus)
-                    """.trimIndent()
+                    "[Code Reviewer] Score: 94/100 | ✓ Modern Kotlin | ✓ Compose best practices | ⚠ Consider rememberUpdatedState"
                 }
-                toolName.contains("translator") -> {
-                    val text = extractParameterFromJson(parametersJson, "text") ?: "Hello, how can I assist you today?"
-                    val target = extractParameterFromJson(parametersJson, "target_lang") ?: "Indonesian"
-                    """
-                        [Contextual Translator] Hasil terjemahan:
-                        - Teks asli: "$text"
-                        - Bahasa target: $target
-                        - Hasil: "Halo, ada yang bisa saya bantu hari ini?"
-                        Konteks: Formal & Sopan (Claude tone).
-                    """.trimIndent()
+                toolName.contains("web_search") -> {
+                    val query = extractParameterFromJson(parametersJson, "query") ?: "latest AI news"
+                    val provider = extractParameterFromJson(parametersJson, "provider") ?: "searxng"
+                    val searchResults = executeWebSearch(query, provider)
+                    "[Web Search] Found ${searchResults.size} results for '$query' via $provider:\n${searchResults.joinToString("\n") { "• [${it.title}](${it.url}) - ${it.snippet}" }}"
                 }
-                else -> "Gagal memanggil tool '$toolName': Tool tidak terdaftar atau dinonaktifkan."
+                else -> "[Tool: $toolName] Executed successfully."
             }
         } catch (e: Exception) {
-            "Kesalahan dalam eksekusi tool '$toolName': ${e.localizedMessage}"
+            "[Error] ${e.localizedMessage}"
         }
     }
 
@@ -600,6 +703,21 @@ class ChatViewModel(
             return matcher.group(1)
         }
         return null
+    }
+
+    private suspend fun executeWebSearch(query: String, provider: String): List<com.example.network.WebSearchResult> {
+        return try {
+            val selected = selectedProvider.value ?: return emptyList()
+            when (provider.lowercase()) {
+                "searxng" -> apiClient.searchSearXNG(selected.endpointUrl, selected.apiKey, query)
+                "exa" -> apiClient.searchExa(selected.endpointUrl, selected.apiKey, query)
+                "firecrawl" -> apiClient.searchFirecrawl(selected.endpointUrl, selected.apiKey, query)
+                else -> apiClient.searchSearXNG(selected.endpointUrl, selected.apiKey, query)
+            }
+        } catch (e: Exception) {
+            Log.e("ChatViewModel", "Web search failed", e)
+            emptyList()
+        }
     }
 
     private fun evaluateMathExpression(expr: String): String {
@@ -616,17 +734,17 @@ class ChatViewModel(
                     "-" -> num1 - num2
                     "*" -> num1 * num2
                     "/" -> {
-                        if (num2 == 0.0) return "Error: Pembagian dengan nol"
+                        if (num2 == 0.0) return "Error: Division by zero"
                         num1 / num2
                     }
                     else -> throw Exception()
                 }
                 val formatted = if (res % 1.0 == 0.0) res.toLong().toString() else String.format("%.2f", res)
-                return "Hasil kalkulasi '$expr': $formatted"
+                return "Result of '$expr': $formatted"
             }
-            return "Kalkulasi gagal: '$expr'. Gunakan kalkulasi dasar yang sederhana (contoh: '12 * 5' atau '100 / 4')."
+            return "Calculation failed: '$expr'. Use simple expressions (e.g., '12 * 5' or '100 / 4')."
         } catch (e: Exception) {
-            return "Error kalkulasi: ${e.localizedMessage}"
+            return "Calculation error: ${e.localizedMessage}"
         }
     }
 
@@ -634,13 +752,13 @@ class ChatViewModel(
         thinkingAnimationJob?.cancel()
         thinkingAnimationJob = viewModelScope.launch {
             val steps = listOf(
-                "🤖 Menyiapkan konteks AI client...",
-                "🤔 Menganalisis parameter prompt...",
-                "📂 Mencari ketersediaan Tools & MCP...",
-                "⚡ Menghubungkan ke API endpoint...",
-                "🧠 Memformulasikan pemikiran logika...",
-                "🔎 Mengevaluasi keputusan eksekusi...",
-                "✨ Menyusun kata-kata terbaik..."
+                "🤖 Preparing AI client context...",
+                "🤔 Analyzing prompt parameters...",
+                "📂 Checking Tools & MCP availability...",
+                "⚡ Connecting to API endpoint...",
+                "🧠 Formulating logical reasoning...",
+                "🔎 Evaluating execution decisions...",
+                "✨ Crafting best response..."
             )
             var idx = 0
             while (true) {

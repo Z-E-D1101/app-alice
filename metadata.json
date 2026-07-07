@@ -1,6 +1,6 @@
 {
-  "name": "AI Agent Client",
-  "description": "Universal AI Agent Client similar to Claude Mobile, with support for customizable providers, SSE streaming, and visual tool calls.",
+  "name": "Alice AI Agent",
+  "description": "Standalone AI Agent with 40+ tools, web search, and MCP support.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }

@@ -28,7 +28,9 @@ data class MessageBlock(
     val toolInput: String = "",
     val toolOutput: String? = null,
     val toolStatus: String = "", // "running", "success", "error"
-    val isCollapsed: Boolean = true
+    val isCollapsed: Boolean = true,
+    val toolDurationMs: Long = 0L,
+    val toolTokens: Int = 0
 )
 
 @Entity(tableName = "provider_profiles")
