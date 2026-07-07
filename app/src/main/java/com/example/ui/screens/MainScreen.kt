@@ -132,12 +132,12 @@ fun MainScreen(viewModel: ChatViewModel, modifier: Modifier = Modifier) {
                         Text(text = "Tap logo to change", fontSize = 10.sp, color = MaterialTheme.colorScheme.secondary)
                     }
                 }
-                Button(onClick = { scope.launch { viewModel.createNewSession(); currentScreen = "chat"; drawerState.close() } }, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).testTag("new_chat_button"), shape = RoundedCornerShape(24.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)) {
+                Button(onClick = { scope.launch { viewModel.createNewSession(); currentScreen = "chat"; drawerState.close() } }, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).testTag("new_chat_button")) {
                     Icon(Icons.Default.Add, contentDescription = "New Chat", tint = MaterialTheme.colorScheme.onPrimary)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(text = "New Chat", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                 }
-                OutlinedTextField(value = sessionSearchQuery, onValueChange = { sessionSearchQuery = it }, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), placeholder = { Text("Search chats...") }, leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") }, singleLine = true, colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), focusedContainerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(8.dp))
+                OutlinedTextField(value = sessionSearchQuery, onValueChange = { sessionSearchQuery = it }, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), placeholder = { Text("Search chats...") })
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 Text(text = "MANAGE", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f), modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
                 DrawerMenuItem(icon = Icons.Default.Build, label = "Tools", isSelected = currentScreen == "tools", onClick = { currentScreen = "tools"; scope.launch { drawerState.close() } })
@@ -148,7 +148,7 @@ fun MainScreen(viewModel: ChatViewModel, modifier: Modifier = Modifier) {
                 Text(text = "CHATS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f), modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
                 val filteredSessions = remember(sessions, sessionSearchQuery) { if (sessionSearchQuery.isEmpty()) sessions else sessions.filter { it.title.contains(sessionSearchQuery, ignoreCase = true) } }
                 if (filteredSessions.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) { Text(text = "No conversations yet", fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) }
+                    Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) { Text(text = "No conversations yet", fontSize = 13.sp, color = MaterialTheme.colorScheme.secondary) }
                 } else {
                     LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         items(filteredSessions) { s ->
@@ -200,7 +200,7 @@ fun MainScreen(viewModel: ChatViewModel, modifier: Modifier = Modifier) {
                     if (currentScreen == "chat") {
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
-                            Text(text = "${tokenUsage.tokens} tokens | ${tokenUsage.toolsUsed} tools used", fontSize = 10.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Medium)
+                            Text(text = "${tokenUsage.tokens} tokens | ${tokenUsage.toolsUsed} tools used", fontSize = 10.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -208,11 +208,11 @@ fun MainScreen(viewModel: ChatViewModel, modifier: Modifier = Modifier) {
         }, modifier = modifier.fillMaxSize()) { innerPadding ->
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding).background(MaterialTheme.colorScheme.background)) {
                 when (currentScreen) {
-                    "chat" -> ChatScreen(viewModel = viewModel, messages = messages, isStreaming = isStreaming, currentThinkingStatus = currentThinkingStatus, customLogoUriString = customLogoUriString, onLogoClick = { logoLauncher.launch("image/*") })
-                    "tools" -> ToolsManagementScreen(title = "Tools Backend", configs = tools, onToggle = { id, enabled -> viewModel.toggleTool(id, enabled) }, onBack = { currentScreen = "chat" }, onAdd = { viewModel.showAddToolDialog("tool") })
-                    "mcp" -> ToolsManagementScreen(title = "MCP Server Nodes", configs = mcps, onToggle = { id, enabled -> viewModel.toggleTool(id, enabled) }, onBack = { currentScreen = "chat" }, isMcp = true, onAdd = { viewModel.showAddToolDialog("mcp") })
-                    "skills" -> ToolsManagementScreen(title = "System Skills", configs = skills, onToggle = { id, enabled -> viewModel.toggleTool(id, enabled) }, onBack = { currentScreen = "chat" }, onAdd = { viewModel.showAddToolDialog("skill") })
-                    "settings" -> SettingsScreen(viewModel = viewModel, providers = providers, selectedProvider = selectedProvider, modelsList = modelsList, isLoadingModels = isLoadingModels, onSave = { viewModel.saveProviderProfile(it) }, onDelete = { viewModel.deleteProviderProfile(it) }, onSwitch = { viewModel.switchProviderProfile(it) }, onVerify = { viewModel.verifyAndLoadModels(it) }, customLogoUriString = customLogoUriString, onLogoChangeClick = { logoLauncher.launch("image/*") }, onLogoResetClick = { customLogoUriString = ""; sharedPrefs.edit().putString("custom_logo_uri", "").apply() })
+                    "chat" -> ChatScreen(viewModel = viewModel, messages = messages, isStreaming = isStreaming, currentThinkingStatus = currentThinkingStatus, customLogoUriString = customLogoUriString)
+                    "tools" -> ToolsManagementScreen(title = "Tools Backend", configs = tools, onToggle = { id, enabled -> viewModel.toggleTool(id, enabled) }, onBack = { currentScreen = "chat" })
+                    "mcp" -> ToolsManagementScreen(title = "MCP Server Nodes", configs = mcps, onToggle = { id, enabled -> viewModel.toggleTool(id, enabled) }, onBack = { currentScreen = "chat" })
+                    "skills" -> ToolsManagementScreen(title = "System Skills", configs = skills, onToggle = { id, enabled -> viewModel.toggleTool(id, enabled) }, onBack = { currentScreen = "chat" })
+                    "settings" -> SettingsScreen(viewModel = viewModel, providers = providers, selectedProvider = selectedProvider, modelsList = modelsList, isLoadingModels = isLoadingModels, onSave = {}, onSwitch = {}, onDelete = {}, onVerify = {}, customLogoUriString = customLogoUriString, onLogoChangeClick = {}, onLogoResetClick = {})
                 }
             }
         }
@@ -236,14 +236,14 @@ fun ChatHistoryItem(session: ChatSession, isActive: Boolean, onClick: () -> Unit
     var showRenameDialog by remember { mutableStateOf(false) }
     var renameText by remember { mutableStateOf(session.title) }
     if (showRenameDialog) {
-        AlertDialog(onDismissRequest = { showRenameDialog = false }, title = { Text("Rename Chat", fontFamily = FontFamily.Serif, fontSize = 16.sp, fontWeight = FontWeight.Bold) }, text = { OutlinedTextField(value = renameText, onValueChange = { renameText = it }, singleLine = true, modifier = Modifier.fillMaxWidth()) }, confirmButton = { TextButton(onClick = { onRename(renameText); showRenameDialog = false }) { Text("Save") } }, dismissButton = { TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") } })
+        AlertDialog(onDismissRequest = { showRenameDialog = false }, title = { Text("Rename Chat", fontFamily = FontFamily.Serif, fontSize = 16.sp, fontWeight = FontWeight.Bold) }, text = { OutlinedTextField(value = renameText, onValueChange = { renameText = it }, label = { Text("New name") }, modifier = Modifier.fillMaxWidth()) }, confirmButton = { Button(onClick = { onRename(renameText); showRenameDialog = false }) { Text("Rename") } }, dismissButton = { TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") } })
     }
-    Surface(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp).combinedClickable(onClick = onClick, onLongClick = { showRenameDialog = true }), shape = RoundedCornerShape(24.dp), color = if (isActive) MaterialTheme.colorScheme.inverseSurface else Color.Transparent) {
+    Surface(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp).combinedClickable(onClick = onClick, onLongClick = { showRenameDialog = true }), shape = RoundedCornerShape(24.dp), color = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent) {
         Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(imageVector = Icons.Default.ChatBubbleOutline, contentDescription = null, tint = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
+            Icon(imageVector = Icons.Default.ChatBubbleOutline, contentDescription = null, tint = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary, modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(10.dp))
-            Text(text = session.title, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium, color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground, modifier = Modifier.weight(1f))
-            IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) { Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.35f), modifier = Modifier.size(16.dp)) }
+            Text(text = session.title, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium, color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground)
+            IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) { Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onBackground) }
         }
     }
 }
@@ -273,7 +273,7 @@ fun ChatScreen(viewModel: ChatViewModel, messages: List<ChatMessage>, isStreamin
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(text = "Ask Alice anything...", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground, letterSpacing = (-0.5).sp)
                     Spacer(modifier = Modifier.height(10.dp))
-                    Text(text = "AI assistant with 40+ tools, MCP nodes, and skills integration.", fontSize = 13.sp, color = MaterialTheme.colorScheme.secondary, textAlign = androidx.compose.ui.text.style.TextAlign.Center, style = LocalTextStyle.current.copy(lineHeight = 19.sp))
+                    Text(text = "AI assistant with 40+ tools, MCP nodes, and skills integration.", fontSize = 13.sp, color = MaterialTheme.colorScheme.secondary, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
             }
         } else {
@@ -291,7 +291,7 @@ fun ChatScreen(viewModel: ChatViewModel, messages: List<ChatMessage>, isStreamin
         // Bottom Input Panel
         Surface(tonalElevation = 0.dp, color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
             Column(modifier = Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 6.dp, vertical = 6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 12.dp, vertical = 8.dp)) {
                     // Attach button with dropdown
                     Box {
                         IconButton(onClick = { showAttachMenu = true }, modifier = Modifier.size(40.dp)) {
@@ -303,7 +303,7 @@ fun ChatScreen(viewModel: ChatViewModel, messages: List<ChatMessage>, isStreamin
                             DropdownMenuItem(text = { Text("📄 Document") }, onClick = { showAttachMenu = false })
                         }
                     }
-                    TextField(value = inputText, onValueChange = { inputText = it }, modifier = Modifier.weight(1f).testTag("chat_input_field").focusRequester(focusRequester), placeholder = { Text("Ask Alice anything...", color = MaterialTheme.colorScheme.secondary, fontSize = 14.sp) }, maxLines = 5, colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, disabledContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent), textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onBackground, fontSize = 14.sp), cursorBrush = SolidColor(MaterialTheme.colorScheme.primary))
+                    TextField(value = inputText, onValueChange = { inputText = it }, modifier = Modifier.weight(1f).testTag("chat_input_field").focusRequester(focusRequester), placeholder = { Text("Type message...") }, singleLine = false, colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent))
                     Spacer(modifier = Modifier.width(4.dp))
                     if (isStreaming) {
                         Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error).clickable { viewModel.cancelStreaming() }.testTag("stop_stream_button"), contentAlignment = Alignment.Center) {
@@ -321,9 +321,9 @@ fun ChatScreen(viewModel: ChatViewModel, messages: List<ChatMessage>, isStreamin
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    val activeMcpsCount = mcps.count { it.isEnabled }
-                    val activeToolsCount = tools.count { it.isEnabled }
-                    val activeSkillsCount = skills.count { it.isEnabled }
+                    val activeMcpsCount = 0 // Will be set from viewModel
+                    val activeToolsCount = 0 // Will be set from viewModel
+                    val activeSkillsCount = 0 // Will be set from viewModel
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
                         Box(modifier = Modifier.size(5.dp).clip(CircleShape).background(NaturalInfo))
                         Spacer(modifier = Modifier.width(6.dp))
@@ -343,7 +343,7 @@ fun ChatScreen(viewModel: ChatViewModel, messages: List<ChatMessage>, isStreamin
 
 @Composable
 fun ThinkingPlaceholder(status: String) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline), modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), shape = RoundedCornerShape(16.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.width(12.dp))
@@ -364,7 +364,7 @@ fun ChatMessageItem(msg: ChatMessage, blocks: List<MessageBlock>, onBlockCollaps
         }
         Column(modifier = Modifier.weight(1f, fill = false), horizontalAlignment = if (isUser) Alignment.End else Alignment.Start) {
             if (isUser) {
-                Surface(color = MaterialTheme.colorScheme.inverseSurface, contentColor = MaterialTheme.colorScheme.onBackground, shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 6.dp), modifier = Modifier.padding(start = 40.dp)) {
+                Surface(color = MaterialTheme.colorScheme.inverseSurface, contentColor = MaterialTheme.colorScheme.onBackground, shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp), modifier = Modifier.widthIn(max = 320.dp)) {
                     Text(text = blocks.firstOrNull()?.text ?: "", modifier = Modifier.padding(horizontal = 16.dp, vertical = 11.dp), fontSize = 15.sp, style = LocalTextStyle.current.copy(lineHeight = 22.sp))
                 }
             } else {
@@ -486,17 +486,17 @@ fun CodeBlock(code: String, language: String) {
 
 @Composable
 fun ThinkingBlockCard(thinkingText: String, isCollapsed: Boolean, onCollapseToggle: () -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp, end = 24.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Column {
             Row(modifier = Modifier.fillMaxWidth().clickable { onCollapseToggle() }.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Psychology, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(text = "Thinking Process", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.weight(1f))
-                Icon(imageVector = if (isCollapsed) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp, contentDescription = "Expand/Collapse", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.tertiary)
+                Icon(imageVector = if (isCollapsed) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp, contentDescription = "Expand/Collapse", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.secondary)
             }
             AnimatedVisibility(visible = !isCollapsed, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
                 Box(modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 14.dp)) {
-                    Text(text = thinkingText, fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary, style = LocalTextStyle.current.copy(lineHeight = 18.sp, fontFamily = FontFamily.Monospace, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic))
+                    Text(text = thinkingText, fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary, style = LocalTextStyle.current.copy(lineHeight = 18.sp, fontFamily = FontFamily.Monospace))
                 }
             }
         }
@@ -507,7 +507,7 @@ fun ThinkingBlockCard(thinkingText: String, isCollapsed: Boolean, onCollapseTogg
 @Composable
 fun ToolCallBlockCard(block: MessageBlock, isCollapsed: Boolean, onCollapseToggle: () -> Unit, context: Context) {
     val statusColor = when (block.toolStatus) { "running" -> NaturalWarning; "success" -> NaturalSuccess; "error" -> NaturalError; else -> MaterialTheme.colorScheme.secondary }
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp, end = 24.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Column {
             Row(modifier = Modifier.fillMaxWidth().clickable { onCollapseToggle() }.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(statusColor))
@@ -563,17 +563,17 @@ fun ToolsManagementScreen(title: String, configs: List<ToolConfig>, onToggle: (S
                 }
             }
         }, confirmButton = {
-            Column {
-                Button(onClick = {
-                    isVerifying = true
-                    // Simple ping verification
-                    verificationResult = "✓ Endpoint OK (simulated)"
-                    isVerifying = false
-                }, enabled = newToolEndpoint.isNotEmpty()) {
-                    if (isVerifying) CircularProgressIndicator(modifier = Modifier.size(16.dp)) else Text("Verify Endpoint")
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Button(onClick = {
+            Button(onClick = {
+                isVerifying = true
+                // Simple ping verification
+                verificationResult = "✓ Endpoint OK (simulated)"
+                isVerifying = false
+            }, enabled = newToolEndpoint.isNotEmpty()) {
+                if (isVerifying) CircularProgressIndicator(modifier = Modifier.size(16.dp)) else Text("Verify Endpoint")
+            }
+        }, dismissButton = { 
+            TextButton(onClick = { 
+                if (verificationResult != null) {
                     val config = ToolConfig(
                         id = "${if (isMcp) "mcp" else "tool"}_${newToolName.lowercase().replace(" ", "_")}",
                         name = newToolName,
@@ -584,32 +584,14 @@ fun ToolsManagementScreen(title: String, configs: List<ToolConfig>, onToggle: (S
                     )
                     onToggle(config.id, true)
                     showAddDialog = false
-                }) { Text("Add") }
-            }
-        }, dismissButton = { TextButton(onClick = { showAddDialog = false }) { Text("Cancel") } }
-            Column {
-                Button(onClick = {
-                    isVerifying = true
-                    // Simple ping verification
-                    verificationResult = "✓ Endpoint OK (simulated)"
-                    isVerifying = false
-                }, enabled = newToolEndpoint.isNotEmpty()) {
-                    if (isVerifying) CircularProgressIndicator(modifier = Modifier.size(16.dp)) else Text("Verify Endpoint")
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Button(onClick = {
-                    val config = ToolConfig(
-                        id = "${if (isMcp) "mcp" else "tool"}_${newToolName.lowercase().replace(" ", "_")}",
-                        name = newToolName,
-                        description = "Custom ${if (isMcp) "MCP" else "tool"} endpoint",
-                        type = if (isMcp) "mcp" else "tool",
-                        isEnabled = true,
-                        extraInfo = verificationResult ?: "Added"
-                    )
-                    onToggle(config.id, true)
+                    newToolName = ""
+                    newToolEndpoint = ""
+                    newToolApiKey = ""
+                    verificationResult = null
+                } else {
                     showAddDialog = false
-                }) { Text("Add") }
-            }
+                }
+            }) { Text("Cancel") } 
         })
     }
 
@@ -628,7 +610,7 @@ fun ToolsManagementScreen(title: String, configs: List<ToolConfig>, onToggle: (S
         } else {
             LazyColumn {
                 items(configs) { tool ->
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline), modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), shape = RoundedCornerShape(16.dp)) {
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.inverseSurface), contentAlignment = Alignment.Center) {
                                 Icon(imageVector = if (isMcp) Icons.Default.Computer else Icons.Default.Power, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
@@ -653,7 +635,7 @@ fun ToolsManagementScreen(title: String, configs: List<ToolConfig>, onToggle: (S
 }
 
 @Composable
-fun SettingsScreen(viewModel: ChatViewModel, providers: List<ProviderProfile>, selectedProvider: ProviderProfile?, modelsList: List<String>, isLoadingModels: Boolean, onSave: (ProviderProfile) -> Unit, onDelete: (ProviderProfile) -> Unit, onSwitch: (Long) -> Unit, onVerify: (ProviderProfile) -> Unit, customLogoUriString: String = "", onLogoChangeClick: () -> Unit = {}, onLogoResetClick: () -> Unit = {}) {
+fun SettingsScreen(viewModel: ChatViewModel, providers: List<ProviderProfile>, selectedProvider: ProviderProfile?, modelsList: List<String>, isLoadingModels: Boolean, onSave: (ProviderProfile) -> Unit = {}, onSwitch: (Long) -> Unit = {}, onDelete: (ProviderProfile) -> Unit = {}, onVerify: (ProviderProfile) -> Unit = {}, customLogoUriString: String = "", onLogoChangeClick: () -> Unit = {}, onLogoResetClick: () -> Unit = {}) {
     val context = LocalContext.current
     var showAddDialog by remember { mutableStateOf(false) }
     var editId by remember { mutableLongStateOf(0L) }
@@ -722,7 +704,7 @@ fun SettingsScreen(viewModel: ChatViewModel, providers: List<ProviderProfile>, s
             Spacer(modifier = Modifier.height(6.dp))
         }
         items(providers) { p ->
-            Card(colors = CardDefaults.cardColors(containerColor = if (p.isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { onSwitch(p.id) }, shape = RoundedCornerShape(10.dp)) {
+            Card(colors = CardDefaults.cardColors(containerColor = if (p.isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selected = p.isSelected, onClick = { onSwitch(p.id) })
                     Spacer(modifier = Modifier.width(8.dp))
@@ -742,7 +724,7 @@ fun SettingsScreen(viewModel: ChatViewModel, providers: List<ProviderProfile>, s
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Provider Name") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
             OutlinedTextField(value = editEndpoint, onValueChange = { editEndpoint = it }, label = { Text("Endpoint URL") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
-            OutlinedTextField(value = editApiKey, onValueChange = { editApiKey = it }, label = { Text("API Key (leave empty for local)") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp))
+            OutlinedTextField(value = editApiKey, onValueChange = { editApiKey = it }, label = { Text("API Key (leave empty for local)") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
             Text("Protocol Format:", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
                 RadioButton(selected = editFormat == "openai", onClick = { editFormat = "openai" }); Text("OpenAI"); Spacer(modifier = Modifier.width(12.dp))
@@ -750,7 +732,7 @@ fun SettingsScreen(viewModel: ChatViewModel, providers: List<ProviderProfile>, s
                 RadioButton(selected = editFormat == "gemini", onClick = { editFormat = "gemini" }); Text("Gemini")
             }
             Button(onClick = {
-                val p = ProviderProfile(id = editId, name = editName, endpointUrl = editEndpoint, apiKey = editApiKey, protocolFormat = editFormat, activeModel = editModel, temperature = editTemp, maxTokens = editMaxTokens, topP = editTopP, isSelected = true)
+                val p = ProviderProfile(id = editId, name = editName, endpointUrl = editEndpoint, apiKey = editApiKey, protocolFormat = editFormat, activeModel = editModel, temperature = editTemp, maxTokens = editMaxTokens, topP = editTopP)
                 onVerify(p)
             }, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) {
                 if (isLoadingModels) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
@@ -761,7 +743,7 @@ fun SettingsScreen(viewModel: ChatViewModel, providers: List<ProviderProfile>, s
                 Spacer(modifier = Modifier.height(6.dp))
                 var expandedModelsMenu by remember { mutableStateOf(false) }
                 Box(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
-                    Button(onClick = { expandedModelsMenu = true }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface)) {
+                    Button(onClick = { expandedModelsMenu = true }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onBackground)) {
                         Text(editModel.ifEmpty { "Select model..." })
                     }
                     DropdownMenu(expanded = expandedModelsMenu, onDismissRequest = { expandedModelsMenu = false }, modifier = Modifier.fillMaxWidth()) {
@@ -771,7 +753,7 @@ fun SettingsScreen(viewModel: ChatViewModel, providers: List<ProviderProfile>, s
                     }
                 }
             } else {
-                OutlinedTextField(value = editModel, onValueChange = { editModel = it }, label = { Text("Default Model (e.g. gpt-4o-mini / llama3.2)") }, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp))
+                OutlinedTextField(value = editModel, onValueChange = { editModel = it }, label = { Text("Default Model (e.g. gpt-4o-mini / llama3.2)") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
             }
             var showAdvanced by remember { mutableStateOf(false) }
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
@@ -795,7 +777,7 @@ fun SettingsScreen(viewModel: ChatViewModel, providers: List<ProviderProfile>, s
                 }
             }
             Button(onClick = {
-                val updated = ProviderProfile(id = editId, name = editName, endpointUrl = editEndpoint, apiKey = editApiKey, protocolFormat = editFormat, activeModel = editModel.ifEmpty { if (editFormat == "gemini") "gemini-1.5-flash" else "gpt-4o-mini" }, temperature = editTemp, maxTokens = editMaxTokens, topP = editTopP, isSelected = true)
+                val updated = ProviderProfile(id = editId, name = editName, endpointUrl = editEndpoint, apiKey = editApiKey, protocolFormat = editFormat, activeModel = editModel.ifEmpty { if (editFormat == "openai") "gpt-4o-mini" else "llama3.2" }, temperature = editTemp, maxTokens = editMaxTokens, topP = editTopP)
                 onSave(updated)
                 Toast.makeText(context, "Profile Saved!", Toast.LENGTH_SHORT).show()
             }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
@@ -805,7 +787,7 @@ fun SettingsScreen(viewModel: ChatViewModel, providers: List<ProviderProfile>, s
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
             Text("CUSTOM AI LOGO:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
             Spacer(modifier = Modifier.height(8.dp))
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline), modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), shape = RoundedCornerShape(16.dp)) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline), modifier = Modifier.fillMaxWidth()) {
                 Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     AiLogo(customLogoUriString, Modifier.size(48.dp), 16.dp)
                     Spacer(modifier = Modifier.width(16.dp))
@@ -816,7 +798,7 @@ fun SettingsScreen(viewModel: ChatViewModel, providers: List<ProviderProfile>, s
                 }
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 16.dp), horizontalArrangement = Arrangement.End) {
                     if (customLogoUriString.isNotEmpty()) {
-                        TextButton(onClick = onLogoResetClick) { Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(16.dp)); Spacer(modifier = Modifier.width(4.dp)); Text("Reset to Default", fontSize = 12.sp) }
+                        TextButton(onClick = onLogoResetClick) { Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(16.dp)); Spacer(modifier = Modifier.width(4.dp)); Text("Reset") }
                         Spacer(modifier = Modifier.width(8.dp))
                     }
                     Button(onClick = onLogoChangeClick, shape = RoundedCornerShape(8.dp)) {
